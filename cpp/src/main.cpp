@@ -59,6 +59,23 @@ int main(int argc, char** argv){
         } else if (cmd=="components") {
             Graph g=loadGraph(input);
             std::cout << connectedComponents(g).dump() << std::endl;
+        } else if (cmd=="bfsTrace") {
+            Graph g=loadGraph(input);
+            std::string src=input.value("source",""), dst=input.value("destination","");
+            int maxHops=input.value("maxHops",10), maxSteps=input.value("maxSteps",300);
+            std::cout << bfsTrace(g,src,dst,maxHops,maxSteps).dump() << std::endl;
+        } else if (cmd=="dfsTrace") {
+            Graph g=loadGraph(input);
+            std::string src=input.value("source",""), dst=input.value("destination","");
+            int maxHops=input.value("maxHops",10), maxSteps=input.value("maxSteps",300);
+            std::cout << dfsTrace(g,src,dst,maxHops,maxSteps).dump() << std::endl;
+        } else if (cmd=="dijkstraTrace") {
+            Graph g=loadGraph(input);
+            std::string src=input.value("source",""), dst=input.value("destination","");
+            int maxHops=input.value("maxHops",10);
+            std::string metric=input.value("costMetric","cost");
+            int maxSteps=input.value("maxSteps",300);
+            std::cout << dijkstraTrace(g,src,dst,maxHops,metric,maxSteps).dump() << std::endl;
         } else {
             std::cout << json{{"error","unknown command"}}.dump() << std::endl;
             return 1;

@@ -73,6 +73,42 @@ int main(){
         auto r=detectCycles(g,10,10);
         std::cout<<"Selfloop ok cycles="<<r["count"]<<"\n";
     }
+
+    // bfsTrace steps mirror real traversal
+    {
+        Graph g;
+        g.nodes={"a","b","c"};
+        g.edges={{ "e1","a","b",1,0,"",1},{ "e2","b","c",1,0,"",1}};
+        g.build();
+        auto r=bfsTrace(g,"a","c",10,50);
+        assert(r["found"]==true);
+        assert(r["stepCount"]>=3);
+        assert(r["steps"][1]["current"]=="a");
+        assert(r["steps"][1]["exploring"]=="b");
+        std::cout<<"BFSTrace ok"<<std::endl;
+    }
+    // dfsTrace
+    {
+        Graph g;
+        g.nodes={"a","b","c"};
+        g.edges={{ "e1","a","b",1,0,"",1},{ "e2","b","c",1,0,"",1}};
+        g.build();
+        auto r=dfsTrace(g,"a","c",10,50);
+        assert(r["found"]==true);
+        std::cout<<"DFSTrace ok"<<std::endl;
+    }
+    // dijkstraTrace with distances
+    {
+        Graph g;
+        g.nodes={"a","b","c"};
+        g.edges={{ "e1","a","b",5,0,"",5},{ "e2","a","c",10,0,"",10},{ "e3","b","c",1,0,"",1}};
+        g.build();
+        auto r=dijkstraTrace(g,"a","c",10,"cost",100);
+        assert(r["found"]==true);
+        assert(r["cost"]==6);
+        assert(r["stepCount"]>3);
+        std::cout<<"DijkstraTrace ok"<<std::endl;
+    }
     std::cout<<"ALL TESTS PASSED\n";
     return 0;
 }

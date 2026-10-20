@@ -109,6 +109,174 @@ json dijkstraPath(const Graph &g, const std::string &src, const std::string &dst
     return res;
 }
 
+json dijkstraTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, const std::string &costMetric, int maxSteps) {
+    json res; res["algorithm"]="Dijkstra"; res["metric"]=costMetric;
+    json steps=json::array();
+    if (!g.hasNode(src)) { res["found"]=false; res["error"]="source not found"; res["steps"]=steps; return res; }
+    const long long INF = std::numeric_limits<long long>::max()/4;
+    std::unordered_map<std::string,long long> dist;
+    std::unordered_map<std::string,std::string> prev;
+    std::unordered_map<std::string,size_t> prevedge;
+    std::unordered_map<std::string,int> hops;
+    for (auto &n : g.nodes) dist[n]=INF;
+    dist[src]=0; hops[src]=0;
+    using P = std::pair<long long,std::string>;
+    std::priority_queue<P,std::vector<P>,std::greater<P>> pq;
+    pq.push({0,src});
+    bool found=false;
+    std::vector<std::string> settleOrder;
+    auto wOf = [&](const Edge &e)->long long { return costMetric=="amount" ? e.amount : e.cost; };
+    while(!pq.empty() && (int)steps.size()<maxSteps){
+        auto top=pq.top(); pq.pop();
+        long long d=top.first; std::string u=top.second;
+        if (d>dist[u]) continue;
+        settleOrder.push_back(u);
+        json s; s["current"]=u; s["distance"]=d; s["settleOrder"]=settleOrder;
+        json dm=json::object();
+        for (auto &kv: dist) if (kv.second<INF) dm[kv.first]=kv.second;
+        s["distances"]=dm;
+        if (u==dst){ found=true; s["event"]="settled-target"; steps.push_back(s); break; }
+        if (hops[u]>=maxHops){ s["event"]="hop-limit"; steps.push_back(s); continue; }
+        s["event"]="settle";
+        steps.push_back(s);
+        if ((int)steps.size()>=maxSteps) break;
+        auto it=g.out.find(u);
+        if (it==g.out.end()) continue;
+        for (size_t ei: it->second){
+            if ((int)steps.size()>=maxSteps) break;
+            const Edge &e=g.edges[ei];
+            long long w=wOf(e);
+            json r; r["current"]=u; r["exploring"]=e.to;
+            json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["cost"]=w; je["timestamp"]=e.timestamp; r["edge"]=je;
+            long long cand = dist[u]+w;
+            r["candidateDist"]=cand;
+            r["bestDist"]= (dist[e.to]>=INF? -1 : dist[e.to]);
+            if (cand < dist[e.to]){
+                dist[e.to]=cand; prev[e.to]=u; prevedge[e.to]=ei; hops[e.to]=hops[u]+1;
+                pq.push({dist[e.to],e.to});
+                r["event"]="relaxed-improved"; r["newDist"]=dist[e.to];
+            } else { r["event"]="relaxed-no-change"; }
+            r["settleOrder"]=settleOrder;
+            steps.push_back(r);
+        }
+    }
+    json path=json::array(); json pedges=json::array();
+    long long total=-1;
+    if (dist.count(dst) && dist[dst]<INF){
+        found=true; total=dist[dst];
+        std::vector<std::string> p; std::vector<size_t> pe; std::string cur=dst; int guard=0;
+        while(cur!=src && guard++<10000){ p.push_back(cur); if(!prevedge.count(cur)) break; pe.push_back(prevedge[cur]); cur=prev[cur]; }
+        p.push_back(src);
+        std::reverse(p.begin(),p.end()); std::reverse(pe.begin(),pe.end());
+        for (auto &x:p) path.push_back(x);
+        for (size_t ei:pe){ const Edge &e=g.edges[ei]; json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["cost"]=wOf(e); je["timestamp"]=e.timestamp; pedges.push_back(je); }
+    }
+    res["steps"]=steps; res["found"]=found; res["path"]=path; res["edges"]=pedges;
+    res["cost"]=total; res["stepCount"]=steps.size(); res["settleOrder"]=settleOrder;
+    return res;
+}
+
+json bfsTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, int maxSteps) {
+    json res; res["algorithm"]="BFS"; res["metric"]="minimum hops";
+    json steps=json::array();
+    if (!g.hasNode(src)) { res["found"]=false; res["error"]="source not found"; res["steps"]=steps; return res; }
+    std::unordered_map<std::string,int> dist;
+    std::unordered_map<std::string,std::string> prev;
+    std::unordered_map<std::string,size_t> prevedge;
+    std::queue<std::string> q;
+    dist[src]=0; q.push(src);
+    std::vector<std::string> visitOrder; visitOrder.push_back(src);
+    bool found = (src==dst);
+    auto emit = [&](const std::string &cur, const std::string &exploring, bool hasE, size_t ei){
+        if ((int)steps.size()>=maxSteps) return;
+        json s; s["current"]=cur; s["exploring"]=exploring; s["hasEdge"]=hasE;
+        if (hasE){ const Edge &e=g.edges[ei]; json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["timestamp"]=e.timestamp; s["edge"]=je; }
+        s["visitOrder"]=visitOrder;
+        steps.push_back(s);
+    };
+    emit(src,"",false,0);
+    while(!q.empty() && (int)steps.size()<maxSteps){
+        auto u=q.front(); q.pop();
+        if (dist[u] >= maxHops) continue;
+        auto it = g.out.find(u);
+        if (it==g.out.end()) continue;
+        for (size_t ei : it->second){
+            const Edge &e=g.edges[ei];
+            if ((int)steps.size()>=maxSteps) break;
+            bool isNew = !dist.count(e.to);
+            if (isNew){
+                dist[e.to]=dist[u]+1; prev[e.to]=u; prevedge[e.to]=ei;
+                visitOrder.push_back(e.to);
+                if (e.to==dst) found=true;
+                else q.push(e.to);
+            }
+            emit(u,e.to,true,ei);
+            if (found && e.to==dst) break;
+        }
+        if (found) break;
+    }
+    json path=json::array(); json pedges=json::array();
+    if (found && dist.count(dst)){
+        std::vector<std::string> p; std::vector<size_t> pe;
+        std::string cur=dst;
+        while (cur!=src){ p.push_back(cur); pe.push_back(prevedge[cur]); cur=prev[cur]; }
+        p.push_back(src);
+        std::reverse(p.begin(),p.end()); std::reverse(pe.begin(),pe.end());
+        for (auto &x:p) path.push_back(x);
+        for (size_t ei:pe){ const Edge &e=g.edges[ei]; json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["timestamp"]=e.timestamp; je["asset"]=e.asset; pedges.push_back(je); }
+    }
+    res["steps"]=steps; res["visitOrder"]=visitOrder; res["found"]=found && (bool)dist.count(dst);
+    res["path"]=path; res["edges"]=pedges;
+    res["hops"]= dist.count(dst)? dist[dst] : -1;
+    res["stepCount"]=steps.size();
+    return res;
+}
+
+json dfsTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, int maxSteps) {
+    json res; res["algorithm"]="DFS";
+    json steps=json::array();
+    if (!g.hasNode(src)) { res["found"]=false; res["error"]="source not found"; res["steps"]=steps; return res; }
+    std::unordered_set<std::string> visited;
+    std::vector<std::string> stack; stack.push_back(src);
+    std::vector<std::string> visitOrder;
+    std::unordered_map<std::string,std::string> prev;
+    std::unordered_map<std::string,size_t> prevedge;
+    std::unordered_map<std::string,int> depth; depth[src]=0;
+    bool found=false;
+    auto emit=[&](const std::string &cur, const std::string &exploring, bool hasE, size_t ei){
+        if ((int)steps.size()>=maxSteps) return;
+        json s; s["current"]=cur; s["exploring"]=exploring; s["hasEdge"]=hasE;
+        if (hasE){ const Edge &e=g.edges[ei]; json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["timestamp"]=e.timestamp; s["edge"]=je; }
+        s["visitOrder"]=visitOrder; steps.push_back(s);
+    };
+    emit(src,"",false,0);
+    while(!stack.empty() && (int)steps.size()<maxSteps){
+        std::string u=stack.back(); stack.pop_back();
+        if (visited.count(u)) continue;
+        visited.insert(u); visitOrder.push_back(u);
+        if (u==dst){ found=true; emit(u,"",false,0); break; }
+        if (depth[u]>=maxHops) { emit(u,"",false,0); continue; }
+        auto it=g.out.find(u);
+        std::vector<size_t> eis = it==g.out.end()? std::vector<size_t>{} : it->second;
+        for (int i=(int)eis.size()-1;i>=0;--i){
+            size_t ei=eis[i]; const Edge &e=g.edges[ei];
+            emit(u,e.to,true,ei);
+            if (!visited.count(e.to)){ prev[e.to]=u; prevedge[e.to]=ei; depth[e.to]=depth[u]+1; stack.push_back(e.to); }
+        }
+    }
+    json path=json::array(); json pedges=json::array();
+    if (found){
+        std::vector<std::string> p; std::vector<size_t> pe; std::string cur=dst; int guard=0;
+        while(cur!=src && guard++<10000){ p.push_back(cur); if(!prevedge.count(cur)) break; pe.push_back(prevedge[cur]); cur=prev[cur]; }
+        p.push_back(src);
+        std::reverse(p.begin(),p.end()); std::reverse(pe.begin(),pe.end());
+        for (auto &x:p) path.push_back(x);
+        for (size_t ei:pe){ const Edge &e=g.edges[ei]; json je; je["id"]=e.id; je["from"]=e.from; je["to"]=e.to; je["amount"]=e.amount; je["timestamp"]=e.timestamp; pedges.push_back(je); }
+    }
+    res["steps"]=steps; res["visitOrder"]=visitOrder; res["found"]=found; res["path"]=path; res["edges"]=pedges; res["stepCount"]=steps.size();
+    return res;
+}
+
 json detectCycles(const Graph &g, int maxCycles, int maxLen) {
     json res; res["algorithm"]="Directed cycle detection (DFS)";
     std::vector<std::vector<std::string>> cycles;

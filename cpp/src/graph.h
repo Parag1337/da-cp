@@ -50,6 +50,9 @@ struct Graph {
 // Algorithms return json
 json bfsPath(const Graph &g, const std::string &src, const std::string &dst, int maxHops);
 json dijkstraPath(const Graph &g, const std::string &src, const std::string &dst, int maxHops, const std::string &costMetric);
+json bfsTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, int maxSteps);
+json dfsTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, int maxSteps);
+json dijkstraTrace(const Graph &g, const std::string &src, const std::string &dst, int maxHops, const std::string &costMetric, int maxSteps);
 json detectCycles(const Graph &g, int maxCycles, int maxLen);
 json stronglyConnectedComponents(const Graph &g);
 json degrees(const Graph &g);

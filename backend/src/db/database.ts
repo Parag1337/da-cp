@@ -12,6 +12,20 @@ db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS datasets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  version TEXT NOT NULL DEFAULT '1.0.0',
+  network TEXT NOT NULL,
+  source TEXT NOT NULL,
+  synthetic INTEGER NOT NULL DEFAULT 1,
+  seed INTEGER,
+  address_count INTEGER DEFAULT 0,
+  transfer_count INTEGER DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  manifest TEXT
+);
 CREATE TABLE IF NOT EXISTS addresses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   network TEXT NOT NULL,

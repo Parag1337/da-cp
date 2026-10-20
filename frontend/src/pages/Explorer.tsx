@@ -7,6 +7,7 @@ import '@react-sigma/core/lib/style.css';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import { formatAmount, shortAddr } from '../utils/format';
 import HelpTooltip from '../components/HelpTooltip';
+import ParticleOverlay from '../components/ParticleOverlay';
 import { motion } from 'framer-motion';
 
 function GraphEvents({ onSelect }: { onSelect: (n: string | null) => void }) {
@@ -27,6 +28,10 @@ export default function Explorer() {
   const [selected, setSelected] = useState<string | null>(null);
   const [direction, setDirection] = useState('both');
   const [hops, setHops] = useState(2);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const intensity = 2;
+  const [showParticles, setShowParticles] = useState(true);
   const graphRef = useRef<any>(null);
 
   const mut = useMutation({
@@ -90,10 +95,20 @@ export default function Explorer() {
 
       {g && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-[var(--panel)] border border-[var(--border)] rounded overflow-hidden">
+          <div className="lg:col-span-2 bg-[var(--panel)] border border-[var(--border)] rounded overflow-hidden relative">
             <SigmaContainer style={{ height: '520px', width: '100%' }} graph={g}>
               <GraphEvents onSelect={setSelected} />
+              <ParticleOverlay playing={playing} speed={speed} intensity={intensity} show={showParticles} edges={graphData.edges} />
             </SigmaContainer>
+            <div className="absolute bottom-2 left-2 right-2 flex gap-2 items-center text-xs bg-[var(--panel)]/80 p-2 rounded border border-[var(--border)]">
+              <button onClick={() => setPlaying(p => !p)} className="px-2 py-1 bg-[var(--accent)] text-black rounded">{playing ? 'Pause' : 'Play flow'}</button>
+              <button onClick={() => { setPlaying(false); }} className="px-2 py-1 bg-[var(--panel-2)] rounded">Stop</button>
+              <select value={speed} onChange={e => setSpeed(Number(e.target.value))} className="bg-[var(--panel-2)] rounded px-1">
+                <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
+              </select>
+              <label className="flex items-center gap-1"><input type="checkbox" checked={showParticles} onChange={e => setShowParticles(e.target.checked)} />particles</label>
+              <span className="text-[var(--muted)] ml-auto">Moving dots = recorded transfers (historical replay)</span>
+            </div>
             <div className="p-2 text-xs text-[var(--muted)] border-t border-[var(--border)] flex gap-4">
               <span><span className="inline-block w-3 h-3 rounded-full bg-[#3ddc84] mr-1" />Address</span>
               <span><span className="inline-block w-6 h-0.5 bg-[#4dd0e1] mr-1" />Transfer (direction = arrow)</span>

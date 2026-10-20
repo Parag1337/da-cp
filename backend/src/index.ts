@@ -4,6 +4,7 @@ import { db, NETWORK } from './db/database.js';
 import { seedDemo } from './db/seed.js';
 import { buildGraph, addressStats, addressHistory } from './services/graphService.js';
 import { runCpp } from './services/cppRunner.js';
+import { getProviderConfig } from './services/provider.js';
 
 seedDemo();
 
@@ -12,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => res.json({ ok: true, network: NETWORK }));
+app.get('/api/provider/status', (_req, res) => res.json(getProviderConfig()));
 
 app.get('/api/dashboard', (_req, res) => {
   const txCount = (db.prepare('SELECT COUNT(*) c FROM transactions WHERE network=?').get(NETWORK) as any).c;
@@ -108,6 +110,12 @@ app.post('/api/investigations', (req, res) => {
   const now = Math.floor(Date.now() / 1000);
   const info = db.prepare('INSERT INTO investigations(name,description,network,created_at,updated_at) VALUES(?,?,?,?,?)').run(name, description ?? '', NETWORK, now, now);
   res.json({ id: info.lastInsertRowid, name, description, network: NETWORK, created_at: now, updated_at: now });
+});
+app.patch('/api/investigations/:id', (req, res) => {
+  const { name, description, status } = req.body ?? {};
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare('UPDATE investigations SET name=COALESCE(?,name), description=COALESCE(?,description), updated_at=? WHERE id=?').run(name ?? null, description ?? null, now, req.params.id);
+  res.json({ ok: true });
 });
 app.get('/api/investigations/:id', (req, res) => {
   const inv = db.prepare('SELECT * FROM investigations WHERE id=?').get(req.params.id);

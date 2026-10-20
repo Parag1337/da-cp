@@ -22,7 +22,9 @@ export function buildGraph(network: string, opts: { center?: string; hops?: numb
   const edges: any[] = [];
   for (const r of rows) {
     nodeSet.add(r.from_address); nodeSet.add(r.to_address);
-    edges.push({ id: r.tx_hash, from: r.from_address, to: r.to_address, amount: Number(r.value_raw) > Number.MAX_SAFE_INTEGER ? 0 : Number(r.value_raw), amountRaw: r.value_raw, timestamp: r.timestamp, asset: r.asset, cost: 1 });
+    let amtCpp = 0;
+    try { amtCpp = Number(BigInt(r.value_raw) / 1000000000000n); } catch { amtCpp = 0; }
+    edges.push({ id: r.tx_hash, from: r.from_address, to: r.to_address, amount: amtCpp, amountRaw: r.value_raw, timestamp: r.timestamp, asset: r.asset, cost: 1 });
   }
   // keep amount as number for cpp (may lose precision for huge; store raw too). cpp uses amount long long; Number ok for demo.
   return { nodes: [...nodeSet], edges };

@@ -10,7 +10,12 @@ export default function Address() {
   if (error) return <div className="text-[var(--danger)]">{String(error)}</div>;
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-mono break-all">{data.address}</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-xl font-mono break-all">{data.address}</h1>
+        <button onClick={() => navigator.clipboard.writeText(data.address)} className="text-xs px-2 py-1 bg-[var(--panel-2)] rounded">Copy</button>
+        <a href="/explorer" className="text-xs text-[var(--accent)]">Explorer</a>
+        <a href={`/trace?src=${data.address}`} className="text-xs text-[var(--accent)]">Trace</a>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
         {[
           ['Incoming tx', data.incomingCount],

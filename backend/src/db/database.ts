@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS investigations (
   name TEXT NOT NULL,
   description TEXT,
   network TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
@@ -86,5 +87,6 @@ CREATE INDEX IF NOT EXISTS idx_tr_from ON transfers(network,from_address);
 CREATE INDEX IF NOT EXISTS idx_tr_to ON transfers(network,to_address);
 `);
 
+try { db.exec('ALTER TABLE investigations ADD COLUMN status TEXT NOT NULL DEFAULT \'open\''); } catch {}
 export const NETWORK = 'ethereum-demo';
 export const DEMO_PROVIDER = 'demo-synthetic';

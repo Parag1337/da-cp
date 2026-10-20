@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+engine/build/
+data/runtime/
+data/provider-cache/
+.env
+.env.local
+*.local
+playwright-report/
+test-results/
+coverage/
+.vite/
+.DS_Store
+*.log
